@@ -8,6 +8,7 @@ import random
 from datetime import datetime
 from sumolib import checkBinary  # noqa
 import traci  # noqa
+import pandas as pd
 
 # we need to import python modules from the $SUMO_HOME/tools directory
 if 'SUMO_HOME' in os.environ:
@@ -16,7 +17,7 @@ if 'SUMO_HOME' in os.environ:
 else:
     sys.exit("please declare environment variable 'SUMO_HOME'")
 
-def select_random_rows(file_name, num_rows):
+def select_random_rows(file_name, num_rows,current_date):
     # CSV dosyasını oku
     df = []
     with open(file_name, 'r') as file:
@@ -32,10 +33,16 @@ def select_random_rows(file_name, num_rows):
 
         # başlangıç noktasından itibaren num_rows satır al
         sample_data = df[start_index:start_index + num_rows]
+
     else:
         print("Data listesi belirtilen sayıdan az öğe içeriyor.")
         sample_data = []
-
+    """df_sample = pd.DataFrame(sample_data)
+    # İlk sütunu 0'dan başlayıp 20'şer artan bir dizi ile değiştir
+    df_sample.iloc[:, 0] = range(0, 20 * len(df_sample), 20)
+    # İkinci sütunu, ilk sütundaki değerlere 20 ekleyerek oluştur
+    df_sample.iloc[:, 1] = df_sample.iloc[:, 0] + 20
+    df_sample.to_csv(f'{current_date}.csv', index=False)"""
     return sample_data
 def generate_routefile(num_rows=50,time_interval=20,current_date=datetime.now().strftime("%Y-%m-%d")):
     if 'SUMO_HOME' in os.environ:
@@ -75,7 +82,7 @@ guiShape="passenger"/>
         counter = 0
         data = []
         file_name ="csv_files/traffic_data.csv"
-        sample_data = select_random_rows(file_name, num_rows)
+        sample_data = select_random_rows(file_name, num_rows,current_date)
 
 
         start_time = 0

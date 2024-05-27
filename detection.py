@@ -22,7 +22,7 @@ def click_event(event, x, y, flags, params):
                     1, (255, 0, 0), 2)
         cv2.imshow('image', img)
 
-def process_video(video_path,start_time):
+def process_video(video_path,start_time,frame_queue):
     """cap = cv2.VideoCapture(0)  # For Webcam
     cap.set(3, 1280)
     cap.set(4, 720)"""
@@ -65,6 +65,8 @@ def process_video(video_path,start_time):
 
     last_recorded_time = start_time
     crossing_count = 0
+    frames = []
+    data_list = []
     try:
         while True:
             new_frame_time = time.time()
@@ -153,6 +155,9 @@ def process_video(video_path,start_time):
                 # Zamanı ve araç sayısını CSV dosyasına yaz
                 writer.writerow([time.strftime("%H:%M:%S", time.gmtime(last_recorded_time- start_time)),
                                  time.strftime("%H:%M:%S", time.gmtime(new_frame_time - start_time)), car_count, crossing_count])
+                data_list.append([time.strftime("%H:%M:%S", time.gmtime(last_recorded_time - start_time)),
+                                  time.strftime("%H:%M:%S", time.gmtime(new_frame_time - start_time)), car_count,
+                                  crossing_count])
                 crossing_count = 0
 
                 last_recorded_time = new_frame_time
@@ -165,36 +170,71 @@ def process_video(video_path,start_time):
             temp = 0
 
             crop_img = img[150:150 + 400, 540:540 + 500]
-
+            if success:
+                img = cv2.resize(img, (400, 400))  # Her bir çerçeveyi aynı boyuta getir
+                frame_queue.put(img)
             # Kesilmiş görüntüyü göster
-            cv2.imshow("OriginalImage", img)
+            #cv2.imshow("OriginalImage", img)
             # cv2.imshow("CropImage", crop_img)
             # cv2.imshow("mask", imgRegion)
-            cv2.setMouseCallback('OriginalImage', click_event)
-
+            #cv2.setMouseCallback('OriginalImage', click_event)
             cv2.waitKey(1)
+
     finally:
         file.close()
-if __name__ == '__main__':
+    shared_list.append((video_id, data_list))
+
+
+def combine_videos(frame_queues):
+    texts = ["Lane 1", "Lane 2", "Lane 3", "Lane 4"]
+    while True:
+        frames = [frame_queue.get() for frame_queue in frame_queues]
+        for i in range(len(frames)):
+            h, w, _ = frames[i].shape
+            # Görüntünün alt ortasına metni çiz
+            cv2.putText(frames[i], texts[i], (w//2, h-20), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+        grid_row_1 = cv2.hconcat(frames[0:2])  # İlk iki videoyu yatay olarak birleştir
+        grid_row_2 = cv2.hconcat(frames[2:4])  # Son iki videoyu yatay olarak birleştir
+        grid = cv2.vconcat([grid_row_1, grid_row_2])  # İki satırı dikey olarak birleştir
+        h, w, _ = grid.shape
+        cv2.line(grid, (0, h // 2), (w, h // 2), (0, 255, 0), 2)
+        # Nihai görüntünün ortasına dikey çizgi çiz
+        cv2.line(grid, (w // 2, 0), (w // 2, h), (0, 255, 0), 2)
+
+        cv2.imshow('Combined Video', grid)
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+    cv2.destroyAllWindows()
+
+
+def detect_objects():
     # Video yollarını bir listeye ekleyin
     video_paths = ["video_files/lane1.mp4", "video_files/lane2.mp4", "video_files/lane3.mp4", "video_files/lane4.mp4"]
     start_time = time.time()
-    # Her bir video için ayrı bir işlem başlat
-    processes = [multiprocessing.Process(target=process_video, args=(video_path,start_time)) for video_path in video_paths]
 
+    manager = multiprocessing.Manager()
+    shared_list = manager.list()
+    # Her bir video için ayrı bir işlem başlat
+    frame_queues_temp = [multiprocessing.Queue() for _ in video_paths]
+    processes = [multiprocessing.Process(target=process_video, args=(video_path, start_time, frame_queue, shared_list, i)) for
+                 i, (video_path, frame_queue) in enumerate(zip(video_paths, frame_queues_temp))]
     # Tüm işlemleri başlat
     for process in processes:
         process.start()
+    # İşlenmiş videoları birleştir
+    combine_videos(frame_queues_temp)
 
     # Tüm işlemlerin tamamlanmasını bekle
     for process in processes:
         process.join()
 
-    # Video yollarını bir listeye ekleyin
-    video_paths = ["Videos/lane1.mp4", "Videos/lane2.mp4", "Videos/lane3.mp4", "Videos/lane4.mp4"]
+
+
 
     # İlk CSV dosyasını tamamen oku
-    dfs = [pd.read_csv(f'{video_paths[0]}.csv')]
+    """dfs = [pd.read_csv(f'{video_paths[0]}.csv')]
 
     # Diğer CSV dosyalarını oku ve sadece ilgili sütunları seç
     for video_path in video_paths[1:]:
@@ -208,4 +248,4 @@ if __name__ == '__main__':
     df_combined = pd.concat(dfs, axis=1)
 
     # Sonuçları bir CSV dosyasına yaz
-    df_combined.to_csv('combined.csv', index=False)
+    df_combined.to_csv('combined.csv', index=False)"""

@@ -1,40 +1,42 @@
 from datetime import datetime
-from multiprocessing import Process
+from concurrent.futures import ProcessPoolExecutor
 import sumocfg_generator
 import xml_to_stat
 from csv_to_xml import generate_routefile
 import model_train
+import csv
 import os
 import time
 def generate():
     sim_nu = 5
-    cfg_files = []
-
+    currents_dates = []
 
     for i in range(sim_nu):
         current_date = datetime.now().strftime('%d-%H-%M-%S') + f"{i}"
         generate_routefile(50, 20, current_date)
         sumocfg_generator.generate_cfg_file(current_date)
-        cfg_files.append(current_date)
-        print(cfg_files)
-    return cfg_files
+        currents_dates.append(current_date)
+    return currents_dates
+
 def main():
-    processes = []
-    cfg_files = generate()
+    cfg_names = generate()
 
+    with ProcessPoolExecutor() as executor:
+        futures = [executor.submit(model_train.run, False, "model_11", 50, 1500, cfg_file) for cfg_file in cfg_names]
 
-    for cfg_file in cfg_files:
-        # Run model_train.run function in a separate process
-        print(cfg_file)
-        process = Process(target=model_train.run, args=(False, "model_11", 50, 1500, cfg_file))
-        process.start()
-        processes.append(process)
+    # Wait for all processes to complete and get their results
+    results = [future.result() for future in futures]
+    results_with_names = zip(cfg_names, results)
 
-    # Wait for all processes to complete
-    for process in processes:
-        process.join()
+    # Eşleşmeleri bir CSV dosyasına yaz
+    with open('csv_files/simulation_results.csv', 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(["Simulation Name", "AVG Fuel", "AVG CO2", "AVG Waiting Time"])  # Sütun başlıklarını yaz
+        for name, result in results_with_names:
+            writer.writerow([name] + list(result))
 
-        # Tüm süreçlerin tamamlanmasını bekle
+    return results,cfg_names
+
 
 
 if __name__ == '__main__':
