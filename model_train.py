@@ -1,21 +1,22 @@
 from __future__ import absolute_import
 from __future__ import print_function
-
+from datetime import datetime
 import os
 import sys
-import time
 import optparse
-import random
-import serial
 import numpy as np
 import torch
 import torch.optim as optim
 import torch.nn.functional as F
 import torch.nn as nn
 import matplotlib.pyplot as plt
+import pandas as pd
+from xml_to_stat import calculate_averages
+
 
 # python train.py --train -e 50 -m model_name -s 500 (for train the model)
 # python train.py -m model_name -s 500 (for test the model)
+
 # we need to import python modules from the $SUMO_HOME/tools directory
 if "SUMO_HOME" in os.environ:
     tools = os.path.join(os.environ["SUMO_HOME"], "tools")
@@ -34,6 +35,30 @@ def duration_to_vector(duration):
     action_vector[duration - 15] = 1
 
     return action_vector
+
+def plot_average_light_durations(csv_file):
+    # CSV dosyasını oku
+    df = pd.read_csv(csv_file)
+
+    # Her bir lane için ortalama ışık sürelerini hesapla
+    lane_columns = [col for col in df.columns if 'lane' in col]
+    duration_columns = [col for col in df.columns if 'duration' in col]
+    average_durations = {}
+
+    for lane_col, duration_col in zip(lane_columns, duration_columns):
+        junction = lane_col.split('_')[0]
+        for lane in df[lane_col].unique():
+            average_duration = df[df[lane_col] == lane][duration_col].mean()
+            average_durations[f'lane_{lane}'] = average_duration
+
+    # Ortalama süreleri bir grafikte g��ster
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.bar(average_durations.keys(), average_durations.values())
+    ax.set_xlabel('Lane')
+    ax.set_ylabel('Average Light Duration')
+    ax.set_title('Average Light Durations for Each Lane')
+    plt.xticks(rotation=90)
+    return fig
 def get_vehicle_numbers(lanes):
     vehicle_per_lane = dict()
     for l in lanes:
@@ -60,12 +85,9 @@ def get_waiting_time(lanes):
         waiting_time += traci.lane.getWaitingTime(lane)
     return waiting_time
 
-
 def phaseDuration(junction, phase_time, phase_state):
     traci.trafficlight.setRedYellowGreenState(junction, phase_state)
     traci.trafficlight.setPhaseDuration(junction, phase_time)
-
-
 
 class Model(nn.Module):
     def __init__(self, lr, input_dims, fc1_dims, fc2_dims, fc3_dims, n_actions):
@@ -94,7 +116,6 @@ class Model(nn.Module):
         x = F.relu(self.linear3(x))
         actions = self.linear4(x)
         return actions
-
 
 class Agent:
     def __init__(
@@ -172,11 +193,6 @@ class Agent:
             action = torch.argmax(actions).item()
         else:
             action = np.random.choice(self.action_space)
-        """lane = action // 11  # 44 aksiyonu 4 şeride böler
-        duration = action % 11 + 15  # 44 aksiyonu 11 süreye böler ve 15 ekler (15-25 arası süre)"""
-
-        # Aksiyonu süre setinin boyutuna göre mod alır ve bu indekse karşılık gelen süreyi seçer
-
         return action
     
     def reset(self,junction_numbers):
@@ -224,37 +240,30 @@ class Agent:
 
         )
 
+def run(train=False,model_name="model_11",epochs=50,steps=500,cfg_file=""):
 
-def run(train=True,model_name="model",epochs=50,steps=500,ard=False):
-    if ard:
-        arduino = serial.Serial(port='COM4', baudrate=9600, timeout=.1)
-        def write_read(x):
-            arduino.write(bytes(x, 'utf-8'))
-            time.sleep(0.05)
-            data = arduino.readline()
-            return data
     """execute the TraCI control loop"""
     epochs = epochs
     steps = steps
     best_time = np.inf
     total_time_list = list()
     traci.start(
-        [checkBinary("sumo"), "-c", "configuration.sumocfg", "--tripinfo-output", "maps/tripinfo.xml"]
+        [checkBinary("sumo"), "-c", f"cfg_files/{cfg_file}.sumocfg", "--tripinfo-output", "cfg_files/maps/tripinfo.xml"]
     )
     all_junctions = traci.trafficlight.getIDList()
     junction_numbers = list(range(len(all_junctions)))
     print(all_junctions)
     brain = Agent(
-        gamma=0.99,
+        gamma=0.9,
         epsilon=1,
-        lr=0.06,
+        lr=0.1,
         input_dims=9,
         # input_dims = len(all_junctions) * 4,
         fc1_dims=256,
         fc2_dims=256,
         fc3_dims=256,
         batch_size=2048,
-        n_actions=30,
+        n_actions=40,
         junctions=junction_numbers,
 
     )
@@ -264,14 +273,18 @@ def run(train=True,model_name="model",epochs=50,steps=500,ard=False):
 
     print(brain.Q_eval.device)
     traci.close()
+    date_time = datetime.now().strftime("%d_%H_%M_%S")
+
+    # Dosya adına tarih ve saati ekle
+    filename = f"cfg_files/{cfg_file}.xml"
     for e in range(epochs):
         if train:
             traci.start(
-            [checkBinary("sumo"), "-c", "configuration.sumocfg", "--tripinfo-output", "tripinfo.xml"]
+            [checkBinary("sumo"), "-c", f"cfg_files/{cfg_file}.sumocfg", "--tripinfo-output", filename,"--no-warnings"]
             )
         else:
             traci.start(
-            [checkBinary("sumo-gui"), "-c", "configuration.sumocfg", "--tripinfo-output", "tripinfodemo.xml","--start"]
+            [checkBinary("sumo"), "-c", f"cfg_files/{cfg_file}.sumocfg", "--tripinfo-output", filename,"--no-warnings"]
             )
 
         print(f"epoch: {e}")
@@ -296,9 +309,10 @@ def run(train=True,model_name="model",epochs=50,steps=500,ard=False):
         prev_vehicles_per_lane = dict()
         prev_action = dict()
         all_lanes = list()
-        waiting_time = 0
-        reward = 0
         lane = 0
+        traffic_light_data = {}
+        max_waiting_time = 0
+
         for junction_number, junction in enumerate(all_junctions):
             prev_waiting_time = 0
             prev_action[junction_number] = 0
@@ -311,38 +325,43 @@ def run(train=True,model_name="model",epochs=50,steps=500,ard=False):
             traci.simulationStep()
             for junction_number, junction in enumerate(all_junctions):
                 controled_lanes = traci.trafficlight.getControlledLanes(junction)
-
                 waiting_time = get_waiting_time(controled_lanes)
-
-
-                #print("waiting_time:",waiting_time,"prev_waiting_time:",prev_waiting_time)
                 total_time += waiting_time
-
+                if waiting_time > max_waiting_time:
+                    max_waiting_time = waiting_time
                 if traffic_lights_time[junction] == 0:
                     vehicles_per_lane = get_vehicle_numbers(controled_lanes)
                     # vehicles_per_lane = get_vehicle_numbers(all_lanes)
 
                     reward = (prev_waiting_time - waiting_time)
                     #print("reward:",reward,"waiting_time:",waiting_time,"prev_time",prev_waiting_time)
-
+                    selected_lane = lane % 4
                     # storing previous state and current state
-                    state_ = list(vehicles_per_lane.values()) + [waiting_time]
-                    deneme = list(prev_vehicles_per_lane[junction_number]) + [prev_waiting_time]
+                    state_ = list(vehicles_per_lane.values()) + [int(waiting_time)]
+
                     state = (prev_vehicles_per_lane[junction_number]+[prev_waiting_time])
 
                     #print("state:",state,"state_:",state_)
                     prev_vehicles_per_lane[junction_number] = state_[:-1]
                     prev_waiting_time = waiting_time
-                    brain.store_transition(state, state_, duration-10,reward,(step==steps),junction_number)
+                    """print("state:", state, "state_:", state_, "reward:", reward, "action:", duration - 5, "step:", step,
+                          "junction:", junction_number)"""
+                    brain.store_transition(state, state_, duration-5,reward,(step==steps),junction_number)
 
                     #selecting new action based on current state
-                    duration = brain.choose_action(state_) + 10
+                    duration = brain.choose_action(state_) + 5
                     prev_action[junction_number] = lane%4
-                    phaseDuration(junction, 3, select_lane[lane%4][0])
+                    phaseDuration(junction, 5, select_lane[lane%4][0])
                     phaseDuration(junction, duration, select_lane[lane%4][1])
+
+                    # Trafik ışığı durumunu, şerit numarasını ve ışık süresini kaydedin
+                    if junction not in traffic_light_data:
+                        traffic_light_data[junction] = []
+                    traffic_light_data[junction].append((step, lane % 4, duration))
 
                     traffic_lights_time[junction] = duration
                     lane+=1
+
                     if train:
                         brain.learn(junction_number)
                 else:
@@ -358,7 +377,26 @@ def run(train=True,model_name="model",epochs=50,steps=500,ard=False):
 
         traci.close()
         sys.stdout.flush()
+
         if not train:
+            # Trafik ışığı verilerini bir pandas DataFrame'ine dönüştür
+            expanded_data = {}
+            for junction, data in traffic_light_data.items():
+                expanded_data["step"] = [d[0] for d in data]
+                expanded_data["lane"] = [d[1] for d in data]
+                expanded_data["duration"] = [d[2] for d in data]
+
+            # Verileri bir pandas DataFrame'ine dönüştür
+            df = pd.DataFrame(expanded_data)
+
+            # DataFrame'i bir CSV dosyasına yaz
+            df.to_csv('traffic_light_data.csv', index=False)
+            print("Maximum waiting time: ", max_waiting_time)
+            plot_average_light_durations('traffic_light_data.csv')
+
+
+            average_co2_emission, average_waiting_time, average_fuel_abs = calculate_averages(filename)
+
             break
     if train:
         plt.plot(list(range(len(total_time_list))),total_time_list)
@@ -367,6 +405,7 @@ def run(train=True,model_name="model",epochs=50,steps=500,ard=False):
         plt.savefig(f'plots/time_vs_epoch_{model_name}.png')
         plt.show()
 
+    return average_co2_emission, average_waiting_time, average_fuel_abs
 def get_options():
     optParser = optparse.OptionParser()
     optParser.add_option(
@@ -414,4 +453,4 @@ if __name__ == "__main__":
     epochs = options.epochs
     steps = options.steps
     ard = options.ard
-    run(train=train,model_name=model_name,epochs=epochs,steps=steps,ard=ard)
+    run(train=train,model_name=model_name,epochs=epochs,steps=steps)

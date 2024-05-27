@@ -11,7 +11,9 @@ csv_data = [pd.read_csv(file) for file in csv_files]
 
 # Video dosyalarını oku
 video_files = ["video_files/lane1.mp4", "video_files/lane2.mp4",
-               "video_files/lane3.mp4", "video_files/lane4.mp4"]
+               "video_files/lane3.mp4", "video_files/lane4.mp4",
+               "sumo_simulation_videos/east_west.mp4","sumo_simulation_videos/north_south.mp4",
+               "sumo_simulation_videos/south_north.mp4","sumo_simulation_videos/west_east.mp4",]
 cap = [cv2.VideoCapture(file) for file in video_files]
 
 # Video frame'lerini saklamak için bir kuyruk oluştur
@@ -23,7 +25,7 @@ root.geometry("1900x1060+0+0")
 
 # CSV dosyalarını görüntüle
 for i, data in enumerate(csv_data):
-    frame = tk.Frame(root, width=400, height=200)
+    frame = tk.Frame(root, width=200, height=50)
     frame.grid(row=0, column=4, padx=5, pady=1)
     frame.grid_propagate(False)  # Frame'in boyutunun içerik tarafından değiştirilmesini engelle
 
@@ -32,7 +34,7 @@ for i, data in enumerate(csv_data):
     xscrollbar.pack(side='bottom', fill='x')
 
     # Kaydırma çubuğu olan bir Text widget'ı oluştur
-    text = tk.Text(frame, width=75, height=30, wrap='none',
+    text = tk.Text(frame, width=80, height=10, wrap='none',
                    xscrollcommand=xscrollbar.set)
     text.pack()
 
@@ -78,7 +80,19 @@ def update_gui(label, frame_queue):
 # Video dosyalarını görüntüle
 labels = [tk.Label(root) for _ in cap]
 for i, label in enumerate(labels):
-    label.grid(row=i // 2, column=i % 2 + 2, padx=5, pady=1, sticky='NW')  # widget'ları sağ üst köşeye yerleştir
+    if i < 4:
+        label.grid(row=i // 2, column=i % 2, padx=5, pady=1, )
+    else:
+        label.grid(row=(i-4) // 2, column=4 + (i - 4) % 2, padx=5, pady=1, sticky='NE')
     update_gui(label, frame_queues[i])
+
+grid_size = root.grid_size()
+
+# Son dört widget'ın column değerini en yüksek değere ayarla
+for i in range(4, 7):
+    if i < 5:  # İlk iki widget (5. ve 6. videolar) en yüksek column değerine sahip olacak
+        labels[i].grid(column=grid_size[0] - 1)
+    else:  # Son iki widget (7. ve 8. videolar) bir sonraki column'a yerleştirilecek
+        labels[i].grid(column=grid_size[0])
 
 root.mainloop()

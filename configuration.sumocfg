@@ -3,11 +3,11 @@
 <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
     <input>
         <net-file value='maps/crosnew.net.xml'/>
-        <route-files value='maps/demo.rou.xml'/>
+        <route-files value='maps/27-17-18-46.rou.xml'/>
     </input>
     <output>
-        <emission-output value="outputs/emissions2.xml"/>
-        <queue-output value="outputs/queue2.xml"/>
+        <emission-output value="outputs/emissions.xml"/>
+        <queue-output value="outputs/queue.xml"/>
         <tripinfo-output value="outputs/tripinfosreport.xml"/>
     </output>
     <time>

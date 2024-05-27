@@ -19,9 +19,9 @@ import traci  # noqa
 
 
 def generate_routefile():
-    random.seed(17)  # make tests reproducible
+    random.seed(84)  # make tests reproducible
 
-    N = 15000  # number of time steps
+    N = 22500  # number of time steps
 
 
     with open("../data/demo.rou.xml", "w") as routes:
@@ -44,82 +44,100 @@ guiShape="passenger"/>
         <route id="StoW" edges="SN1 EW2" />
         """, file=routes)
 
-        a = 10  # alt sınır
-        b = 40 # üst sınır
+        a = 0  # alt sınır
+        b = 100 # üst sınır
         vehNr = 0
         for i in range(N):
 
-            if i < 2000:
-                pEW = pEN = pES  = 1. / 15
-                pNS= pNE= pNW = 1. / 40
-                pSN= pSE= pSW = 1. / 40
-                pWS= pWN= pWE = 1. / 40
+            if i < 2500:
+                pEW = pEN = pES = 1. / 5
+                pNS = pNE = pNW = 1. / 40
+                pSN = pSE = pSW = 1. / 40
+                pWS = pWN = pWE = 1. / 40
 
-            elif 2000 < i < 2500:
-                pEW=pEN=pES = 1. / 70
-                pNS=pNE=pNW = 1. / 70
-                pSN=pSE=pSW = 1. / 70
-                pWS=pWN=pWE = 1. / 70
+            elif 2500 < i < 3000:
+                pEW = pEN = pES = 1. / 70
+                pNS = pNE = pNW = 1. / 70
+                pSN = pSE = pSW = 1. / 70
+                pWS = pWN = pWE = 1. / 70
 
-            elif 2500 < i < 4500:
-                pEW=pEN=pES = 1. / 40
-                pNS=pNE=pNW = 1. / 15
-                pSN=pSE=pSW = 1. / 40
-                pWS=pWN=pWE = 1. / 40
+            elif 3000 < i < 5000:
+                pEW = pEN = pES = 1. / 40
+                pNS = pNE = pNW = 1. / 5
+                pSN = pSE = pSW = 1. / 40
+                pWS = pWN = pWE = 1. / 40
 
-            elif 4500 < i < 5000:
-                pEW=pEN=pES = 1. / 70
-                pNS=pNE=pNW = 1. / 70
-                pSN=pSE=pSW = 1. / 70
-                pWS=pWN=pWE = 1. / 70
+            elif 5000 < i < 5500:
+                pEW = pEN = pES = 1. / 70
+                pNS = pNE = pNW = 1. / 70
+                pSN = pSE = pSW = 1. / 70
+                pWS = pWN = pWE = 1. / 70
 
-            elif 5000 < i < 7000:
-                pEW=pEN=pES = 1. / 40
-                pNS=pNE=pNW = 1. / 40
-                pSN=pSE=pSW = 1. / 15
-                pWS=pWN=pWE = 1. / 40
+            elif 5500 < i < 7500:
+                pEW = pEN = pES = 1. / 40
+                pNS = pNE = pNW = 1. / 40
+                pSN = pSE = pSW = 1. / 5
+                pWS = pWN = pWE = 1. / 40
 
-            elif 7000 < i < 7500:
-                pEW=pEN=pES = 1. / 70
-                pNS=pNE=pNW = 1. / 70
-                pSN=pSE=pSW = 1. / 70
-                pWS=pWN=pWE = 1. / 70
+            elif 7500 < i < 8000:
+                pEW = pEN = pES = 1. / 70
+                pNS = pNE = pNW = 1. / 70
+                pSN = pSE = pSW = 1. / 70
+                pWS = pWN = pWE = 1. / 70
 
-            elif 7500 < i < 9500:
-                pEW=pEN=pES = 1. / 40
-                pNS=pNE=pNW = 1. / 40
-                pSN=pSE=pSW = 1. / 40
-                pWS=pWN=pWE = 1. / 15
+            elif 8000 < i < 10000:
+                pEW = pEN = pES = 1. / 40
+                pNS = pNE = pNW = 1. / 40
+                pSN = pSE = pSW = 1. / 40
+                pWS = pWN = pWE = 1. / 5
 
-            elif 9500 < i < 10000:
-                pEW=pEN=pES = 1. / 70
-                pNS=pNE=pNW = 1. / 70
-                pSN=pSE=pSW = 1. / 70
-                pWS=pWN=pWE = 1. / 70
+            elif 10000 < i < 10500:
+                pEW = pEN = pES = 1. / 70
+                pNS = pNE = pNW = 1. / 70
+                pSN = pSE = pSW = 1. / 70
+                pWS = pWN = pWE = 1. / 70
 
-            elif 10000 < i < 12000:
-                pEW=pEN=pES = 1. / 25
-                pNS=pNE=pNW = 1. / 25
-                pSN=pSE=pSW = 1. / 25
-                pWS=pWN=pWE = 1. / 25
+            elif 10500 < i < 12500:
+                pEW = pEN = pES = 1. / 25
+                pNS = pNE = pNW = 1. / 25
+                pSN = pSE = pSW = 1. / 25
+                pWS = pWN = pWE = 1. / 25
 
-            elif 12000 < i < 12500:
-                pEW=pEN=pES = 1. / 70
-                pNS=pNE=pNW = 1. / 70
-                pSN=pSE=pSW = 1. / 70
-                pWS=pWN=pWE = 1. / 70
+            elif 12500 < i < 13000:
+                pEW = pEN = pES = 1. / 70
+                pNS = pNE = pNW = 1. / 70
+                pSN = pSE = pSW = 1. / 70
+                pWS = pWN = pWE = 1. / 70
 
-            elif 12500 < i < 14500:
-                pEW=pEN=pES = 1. / 40
-                pNS=pNE=pNW = 1. / 40
-                pSN=pSE=pSW = 1. / 40
-                pWS=pWN=pWE = 1. / 40
+            elif 13000 < i < 15000:
+                pEW = pEN = pES = 1. / 40
+                pNS = pNE = pNW = 1. / 40
+                pSN = pSE = pSW = 1. / 40
+                pWS = pWN = pWE = 1. / 40
 
-            elif 145000 < i < 15000:
-                pEW=pEN=pES = 1. / 70
-                pNS=pNE=pNW = 1. / 70
-                pSN=pSE=pSW = 1. / 70
-                pWS=pWN=pWE = 1. / 70
+            elif 15000 < i < 15500:
+                pEW = pEN = pES = 1. / 70
+                pNS = pNE = pNW = 1. / 70
+                pSN = pSE = pSW = 1. / 70
+                pWS = pWN = pWE = 1. / 70
+
+            elif 15500 < i < 17500:
+                pEW = pEN = pES = 1. / 5
+                pNS = pNE = pNW = 1. / 5
+                pSN = pSE = pSW = 1. / 5
+                pWS = pWN = pWE = 1. / 5
+
+            elif 17500 < i < 20000:
+                pEW = pEN = pES = 1. / 70
+                pNS = pNE = pNW = 1. / 70
+                pSN = pSE = pSW = 1. / 70
+                pWS = pWN = pWE = 1. / 70
+
+            elif 20000 < i < 22500:
+                pEW = pEN = pES = 1. / random.uniform(a, b)
+                pNS = pNE = pNW = 1. / random.uniform(a, b)
+                pSN = pSE = pSW = 1. / random.uniform(a, b)
+                pWS = pWN = pWE = 1. / random.uniform(a, b)
 
             if random.uniform(0, 1) < pWE:
                 print('    <vehicle id="WE_%i" type="typeWE" route="WtoE" depart="%i" color="1,0,1"/>' % (
