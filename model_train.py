@@ -14,8 +14,8 @@ import pandas as pd
 from xml_to_stat import calculate_averages
 
 
-# python train.py --train -e 50 -m model_name -s 500 (for train the model)
-# python train.py -m model_name -s 500 (for test the model)
+# python model_train.py --train -e 50 -m model_name -s 500 (for train the model)
+# python _model_train.py -m model_name -s 500 (for test the model)
 
 # we need to import python modules from the $SUMO_HOME/tools directory
 if "SUMO_HOME" in os.environ:

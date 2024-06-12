@@ -2,13 +2,13 @@
 
 <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
     <input>
-        <net-file value='maps/crosnew.net.xml'/>
-        <route-files value='maps/27-17-18-46.rou.xml'/>
+        <net-file value='cfg_files/maps/crosnew.net.xml'/>
+        <route-files value='cfg_files/maps/demo.rou.xml'/>
     </input>
     <output>
-        <emission-output value="outputs/emissions.xml"/>
-        <queue-output value="outputs/queue.xml"/>
-        <tripinfo-output value="outputs/tripinfosreport.xml"/>
+        <emission-output value="cfg_files/outputs/emissions.xml"/>
+        <queue-output value="cfg_files/outputs/queue.xml"/>
+        <tripinfo-output value="cfg_files/outputs/tripinfosreportfinal.xml"/>
     </output>
     <time>
         <begin value='0'/>

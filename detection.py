@@ -2,13 +2,10 @@ from ultralytics import YOLO
 import cv2
 import cvzone
 import math
-import time
 import csv
-import torch
 from sort import*
 import multiprocessing
-import pandas as pd
-from torchvision.transforms import functional as F
+
 
 def click_event(event, x, y, flags, params):
     # checking for left mouse clicks
@@ -29,7 +26,7 @@ def process_video(video_path,start_time,frame_queue):
 
     cap = cv2.VideoCapture(video_path)  # For Video
 
-    model = YOLO("yolov8n.pt")
+    model = YOLO("yolov8l.pt")
 
     classNames = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck", "boat",
                   "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat",
@@ -174,7 +171,7 @@ def process_video(video_path,start_time,frame_queue):
                 img = cv2.resize(img, (400, 400))  # Her bir çerçeveyi aynı boyuta getir
                 frame_queue.put(img)
             # Kesilmiş görüntüyü göster
-            #cv2.imshow("OriginalImage", img)
+            cv2.imshow("OriginalImage", img)
             # cv2.imshow("CropImage", crop_img)
             # cv2.imshow("mask", imgRegion)
             #cv2.setMouseCallback('OriginalImage', click_event)
@@ -182,7 +179,7 @@ def process_video(video_path,start_time,frame_queue):
 
     finally:
         file.close()
-    shared_list.append((video_id, data_list))
+
 
 
 def combine_videos(frame_queues):
@@ -201,7 +198,6 @@ def combine_videos(frame_queues):
         cv2.line(grid, (0, h // 2), (w, h // 2), (0, 255, 0), 2)
         # Nihai görüntünün ortasına dikey çizgi çiz
         cv2.line(grid, (w // 2, 0), (w // 2, h), (0, 255, 0), 2)
-
         cv2.imshow('Combined Video', grid)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -214,24 +210,23 @@ def detect_objects():
     video_paths = ["video_files/lane1.mp4", "video_files/lane2.mp4", "video_files/lane3.mp4", "video_files/lane4.mp4"]
     start_time = time.time()
 
-    manager = multiprocessing.Manager()
-    shared_list = manager.list()
     # Her bir video için ayrı bir işlem başlat
     frame_queues_temp = [multiprocessing.Queue() for _ in video_paths]
-    processes = [multiprocessing.Process(target=process_video, args=(video_path, start_time, frame_queue, shared_list, i)) for
+    processes = [multiprocessing.Process(target=process_video, args=(video_path, start_time, frame_queue)) for
                  i, (video_path, frame_queue) in enumerate(zip(video_paths, frame_queues_temp))]
     # Tüm işlemleri başlat
     for process in processes:
         process.start()
-    # İşlenmiş videoları birleştir
-    combine_videos(frame_queues_temp)
+        # İşlenmiş videoları birleştirmek için bir işlem başlat
+    combine_process = multiprocessing.Process(target=combine_videos, args=(frame_queues_temp,))
+    combine_process.start()
 
     # Tüm işlemlerin tamamlanmasını bekle
     for process in processes:
         process.join()
 
-
-
+    # combine_videos işleminin tamamlanmasını bekle
+    combine_process.join()
 
     # İlk CSV dosyasını tamamen oku
     """dfs = [pd.read_csv(f'{video_paths[0]}.csv')]
@@ -249,3 +244,6 @@ def detect_objects():
 
     # Sonuçları bir CSV dosyasına yaz
     df_combined.to_csv('combined.csv', index=False)"""
+
+if __name__ == "__main__":
+    detect_objects()
